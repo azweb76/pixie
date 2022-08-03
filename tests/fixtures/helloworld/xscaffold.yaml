@@ -1,0 +1,7 @@
+parameters:
+  - name: name
+    default: world
+
+steps:
+  - add_note: 'Hello {{ context.name }}!'
+  - add_todo: This is a todo

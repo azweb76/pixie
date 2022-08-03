@@ -1,0 +1,43 @@
+steps:
+  - fetch: {}
+  - configure:
+      path: sample.yaml
+      format: yaml
+      configuration:
+        fname: John
+  - id: sample
+    read:
+      path: sample.yaml
+      format: text
+  - add_note: ${{ steps.sample }}
+  # - github_organization:
+  #     name: azwebmaster
+  #     token: '{{ env.GITHUB_TOKEN }}'
+  #     steps:
+  #       - create_repo:
+  #           name: test-repo2
+  # - github_repository:
+  #     name: azwebmaster/test-repo2
+  #     token: '{{ env.GITHUB_TOKEN }}'
+  #     steps:
+  #       - set_topics:
+  #           - python
+  #           - scaffolding
+  #       - set:
+  #           delete_branch_on_merge: True
+        # - create_pr:
+        #     title: Test PR
+        #     head: test-branch
+        #     body: This is a test PR from xscaffold by {{ context.fullname }}
+        #     base: master
+
+  # - scaffold:
+  #     name: azweb76/test
+  - fetch:
+      templates:
+        - path: tokens.txt
+          tokens:
+            FNAME: '{{ context.fname }}'
+            LNAME: '{{ context.lname }}'
+            FULLNAME: '{{ context.fullname }}'
+  - shell: 'echo test'

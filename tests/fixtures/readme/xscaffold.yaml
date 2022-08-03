@@ -1,0 +1,16 @@
+parameters:
+  - name: ProjectName
+    description: Name of the project
+    validate: '[a-zA-Z]+'
+
+steps:
+  - shell: echo Test project is ${TERM_RED}${{ ProjectName }}${TERM_END}
+  # - scaffold:
+  #     package: github.com/azweb76/x-scaffold@master
+  #     steps:
+  #       - fetch:
+  #           source: README.md
+  #           templates:
+  #           - path: README.md
+  #             tokens:
+  #               project: ${{ ProjectName }}

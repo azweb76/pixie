@@ -1,0 +1,37 @@
+parameters:
+- name: nameOfProject
+  description: Name of the project
+  validate: '[a-zA-Z_-]+'
+
+context:
+  git:
+    orgName: azwebmaster
+
+steps:
+# - github_organization:
+#     name: ${{ git.orgName }}
+#     steps:
+#     - create_repo:
+#         name: ${{ nameOfProject }}
+#         description: This is a test repo
+
+- github_repository:
+    name: ${{ git.orgName }}/${{ nameOfProject }}
+    steps:
+    - set:
+        description: This is a test repo
+        delete_branch_on_merge: true
+    - add_to_collaborators:
+        collaborator: azweb76
+        permission: admin
+    - branch:
+        name: main
+        steps:
+        - edit_protection:
+            strict: true
+            required_approving_review_count: 1
+            require_code_owner_reviews: true
+            dismiss_stale_reviews: true
+            contexts:
+            - status1
+            - status2

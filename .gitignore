@@ -1,0 +1,7 @@
+*.pyc
+dist
+**/__pycache__
+.idea
+xscaffold.egg-info
+.vscode
+node_modules
