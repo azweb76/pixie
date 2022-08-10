@@ -123,7 +123,7 @@ def get_parser(path):
 def render(template_name, context, template_dir):
     """Used to render a Jinja template."""
 
-    env = Environment(loader=FileSystemLoader(template_dir), variable_start_string='${{', variable_end_string='}}')
+    env = Environment(loader=FileSystemLoader(template_dir), variable_start_string='${{', variable_end_string='}}', keep_trailing_newline=True)
     add_filters(env)
     utils = RenderUtils()
 
@@ -143,7 +143,7 @@ def render_value(text, context: PixieContext):
 
     if text is None:
         return None
-    
+
     if not isinstance(text, str):
         return text
 
@@ -165,7 +165,7 @@ def render_text(text, context: PixieContext):
     if text is None:
         return None
 
-    env = Environment(variable_start_string='${{', variable_end_string='}}')
+    env = Environment(variable_start_string='${{', variable_end_string='}}', keep_trailing_newline=True)
     add_filters(env)
     utils = RenderUtils()
 

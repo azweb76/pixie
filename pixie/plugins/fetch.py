@@ -46,7 +46,7 @@ class FetchStep(PixieStep):
         _log.debug(f'fetching {full_pkg_dir} to {full_target} using {filter}')
 
         templates = opts.get('templates', [])
-        exclude = opts.get('exclude', []) + ['.git', '.git/*']
+        exclude = opts.get('exclude', []) + ['.git', '.git/*', '.pixie.yaml']
         include = opts.get('include', None)
 
         paths = pathlib.Path(full_pkg_dir).rglob(filter)

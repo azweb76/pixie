@@ -62,7 +62,7 @@ class FileStep(PixieStep):
         options = render_options(step, context)
 
         path = context.resolve_target_path(options['path'])
-        content = options.get('content')
+        content = str(options.get('content'))
 
         with open(path, 'w') as fhd:
             fhd.write(content)

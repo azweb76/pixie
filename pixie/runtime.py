@@ -1,4 +1,7 @@
 from getpass import getpass
+import re
+
+import inquirer
 import sys
 
 from pixie.context import PixieContext
@@ -8,6 +11,7 @@ CLI_COLORS = {
     'PURPLE': '\033[35m',
     'CYAN':  '\033[36m',
     'BLUE':  '\033[34m',
+    'GREY':  '\33[90m',
     'GREEN':  '\033[32m',
     'YELLOW':  '\033[33m',
     'RED':  '\033[31m',
@@ -37,50 +41,37 @@ class PixieConsoleRuntime(PixieRuntime):
 
     def ask(self, prompt):
         name = prompt.get('name')
+        default = prompt.get('default')
+        validate = prompt.get('validate')
+        validate_fn = True
+        if validate:
+            validate_fn = lambda _, x: re.match(validate, x)
+        if default is None:
+             validate_fn = lambda _, x: re.match(".+", x)
         description = prompt.get('description', name)
         if 'choices' in prompt:
             choices = prompt['choices']
-            opts = []
-            max_len = 0
-            for c in choices:
-                if isinstance(c, str):
-                    opts.append({
-                        't': c,
-                        'kw': [c],
-                        'v': c
-                    })
-                else:
-                    keywords = ', '.join(c['keywords'])
-                    if len(keywords) > max_len:
-                        max_len = len(keywords)
-                    opts.append({
-                        'kw': c['keywords'],
-                        'kwt': keywords,
-                        't': c['text'],
-                        'v': c.get('value', c['text'])
-                    })
-
-            self.write(description + ': \n')
-            for opt in opts:
-                if 'kwt' in opt:
-                    opt['kwt'] = opt['kwt'].ljust(max_len)
-                    self.write('  - [{kwt}] {t}\n'.format(**opt))
-                else:
-                    self.write(f'  - {opt["t"]}\n')
-
-            choice = input('Choose: ')
-            while True:
-                for c in opts:
-                    if choice in c['kw']:
-                        return c['v']
-                self.write('{RED}[invalid choice]{END} Choose: ')
-                choice = sys.stdin.readline().strip()
+            answers = inquirer.prompt([
+                inquirer.List("value", message=description, choices=choices, default=default, validate=validate_fn)
+            ])
+            if answers is None:
+                raise KeyboardInterrupt()
+            return answers["value"]
 
         if prompt.get('secure', False):
-            return getpass(prompt=description + ': ')
+            answers = inquirer.prompt([
+                inquirer.Password("value", message=description, default=default, validate=validate_fn)
+            ])
+            if answers is None:
+                raise KeyboardInterrupt()
+            return answers["value"]
         else:
-            self.write(description + ': ')
-            return sys.stdin.readline().strip()
+            answers = inquirer.prompt([
+                inquirer.Text("value", message=description, default=default, validate=validate_fn)
+            ])
+            if answers is None:
+                raise KeyboardInterrupt()
+            return answers["value"]
     
     def write(self, message: str, format=False):
         if format:

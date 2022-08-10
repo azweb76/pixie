@@ -126,30 +126,15 @@ def convert(v, type):
 
 def read_parameter(prompt, context, runtime: PixieRuntime):
     default = prompt.get('default', None)
-    required = prompt.get('required', False)
 
     if 'if' in prompt:
         enabled = prompt['if']
         if not enabled:
             return default
     
-    while True:
-        d = runtime.ask(prompt)
+    d = runtime.ask(prompt)
 
-        if d == '' or d is None:
-            if default is not None:
-                return default
-            elif required:
-                runtime.write('{RED}[required]{END} ', format=True)
-            else:
-                return d
-        else:
-            if 'validate' in prompt:
-                matches = re.match(prompt['validate'], d)
-                if matches is None:
-                    runtime.write('{RED}[invalid, %s]{END} ' % prompt['validate'], format=True)
-                    continue
-            return convert(d, prompt.get('type', 'str'))
+    return convert(d, prompt.get('type', 'str'))
 
 
 def config_cli(args):
@@ -200,7 +185,7 @@ def locate_scaffold_file(path, name):
         for ext in extensions:
             for n in names:
                 full_path = os.path.join(base_path, n + ext)
-                _log.debug(f'locating pixie script using {full_path}')
+                _log.debug(f'locating pix script using {full_path}')
                 if os.path.exists(full_path) and os.path.isfile(full_path):
                     return full_path
     return None

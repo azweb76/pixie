@@ -103,6 +103,7 @@ class PixieStepExecution():
                 is_plugin = False
                 action_name = step.get('action', None)
                 executor, is_plugin = self.get_executor(step, action_name, context)
+                _log.debug(step)
                 if executor:
                     step_options = step.get('with', {})
 

@@ -27,8 +27,8 @@ class AddColorFormatter(logging.Formatter):
 def apply_cli(job, script, package, context, context_from, target):
     file_context = utils.read_json(context_from, {})
 
-    user_context_file = os.path.realpath(os.path.expanduser('~/.pixie/context.json'))
-    user_context = utils.read_json(user_context_file, {})
+    user_context_file = os.path.realpath(os.path.expanduser('~/.pixie/context.yaml'))
+    user_context = utils.read_yaml(user_context_file, {})
     file_context = utils.read_json(context_from, {})
     p_context = PixieContext(
         env=os.environ,
@@ -41,15 +41,18 @@ def apply_cli(job, script, package, context, context_from, target):
         parameter_name = c[0:eq_idx]
         parameter_value = c[eq_idx+1:]
         p_context[parameter_name] = parameter_value
-    engine.run(p_context, {
-        'script': script,
-        'job': job,
-        'package': package,
-        'context': utils.merge(file_context, user_context)
-    }, PixieConsoleRuntime())
+    
+    try:
+        engine.run(p_context, {
+            'script': script,
+            'job': job,
+            'package': package,
+            'context': utils.merge(file_context, user_context)
+        }, PixieConsoleRuntime())
+    except KeyboardInterrupt:
+        pass
 
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))
-#@click.group()
 @click.argument('job')
 @click.argument('package')
 @click.version_option(__version__)
