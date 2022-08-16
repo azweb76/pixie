@@ -22,56 +22,6 @@ from .runtime import PixieRuntime
 _log = logging.getLogger(__name__)
 
 
-# def complete(text, state):
-#     if str(text).startswith('~/'):
-#         home = os.path.expanduser('~/')
-#         p = os.path.join(home, text[2:])
-#     else:
-#         p = text
-#         home = None
-
-#     items = pathlib.Path(os.getcwd()).glob(p + '*')
-#     if items is not None and home is not None:
-#         items = ['~/' + x[len(home):] for x in items]
-#     return (items + [None])[state]
-
-
-# def set_readline():
-#     try:
-#         import readline
-#         readline.set_completer_delims(' \t\n;')
-#         readline.parse_and_bind("tab: complete")
-#         readline.set_completer(complete)
-#     except:
-#         pass
-
-
-# class AttributeDict(dict):
-#     __getattr__ = dict.__getitem__
-#     __setattr__ = dict.__setitem__
-
-
-# color = AttributeDict({
-#     'PURPLE': '\033[35m',
-#     'CYAN':  '\033[36m',
-#     'BLUE':  '\033[34m',
-#     'GREEN':  '\033[32m',
-#     'YELLOW':  '\033[33m',
-#     'RED':  '\033[31m',
-#     'BOLD':  '\033[1m',
-#     'UNDERLINE':  '\033[4m',
-#     'ITALIC':  '\033[3m',
-#     'END':  '\033[0m',
-# })
-
-
-# def dict_to_str(d, fmt='%s=%s\n'):
-#     s = ''
-#     for x in d:
-#         s += fmt % (x, d[x])
-#     return s
-
-
 def str2bool(v):
     if v is None:
         return False
@@ -84,38 +34,6 @@ known_types = {
     'str': str,
     'float': float
 }
-
-
-# def term_color(text, *text_colors):
-#     return ''.join(text_colors) + text + color.END
-
-
-
-
-# def render_file(path, context):
-#     """Used to render a Jinja template."""
-
-#     template_dir, template_name = os.path.split(path)
-#     return render(template_name, context, template_dir)
-
-
-# def is_enabled(options):
-#     if 'enabled' in options:
-#         return options['enabled']
-#     if 'disabled' in options:
-#         return not options['disabled']
-#     if 'enabledif' in options:
-#         enabledif = options['enabledif']
-#         value = enabledif['value']
-#         if 'equals' in enabledif:
-#             return value == enabledif['equals']
-#         elif 'notequals' in enabledif:
-#             return value != enabledif['notequals']
-#     return True
-
-
-# def read_input(s):
-#     return input(s)
 
 
 def convert(v, type):
@@ -139,7 +57,7 @@ def read_parameter(prompt, context, runtime: PixieRuntime):
 
 def config_cli(args):
     options = {}
-    scaffold_file = os.path.expanduser('~/.xscaffold')
+    scaffold_file = os.path.expanduser('~/.pixie')
 
     yaml = YAML()
     if os.path.exists(scaffold_file):
@@ -166,7 +84,6 @@ def rm_rf(d):
 
 def locate_scaffold_file(path, name):
     base_paths = [
-        './',
         path
     ]
 
@@ -179,26 +96,29 @@ def locate_scaffold_file(path, name):
 
     names = [
         f'{name}',
-        f'.{name}'
+        f'.{name}',
+        os.path.join(name, '.pixie')
     ]
     for base_path in base_paths:
         for ext in extensions:
             for n in names:
                 full_path = os.path.join(base_path, n + ext)
-                _log.debug(f'locating pix script using {full_path}')
+                _log.debug(f'locating pixie script using {full_path}')
                 if os.path.exists(full_path) and os.path.isfile(full_path):
                     return full_path
     return None
 
 
 def process_parameters(parameters, context: PixieContext, runtime: PixieRuntime):
-    for parameter in parameters:
+    for parameter in (parameters or []):
         parameter_options = render_options(parameter, context)
         parameter_name = parameter_options['name']
-        if parameter_name in context:
-            context[parameter_name] = convert(context[parameter_name], parameter.get('type', 'str'))
+        context_source = parameter_options.get('context_source', parameter_name)
+        context_target = parameter_options.get('context_target', parameter_name)
+        if context_source in context:
+            context[context_target] = convert(context[context_source], parameter.get('type', 'str'))
         else:
-            context[parameter_name] = read_parameter(parameter_options, context, runtime)
+            context[context_target] = read_parameter(parameter_options, context, runtime)
 
 
 def run(context: PixieContext, options, runtime: PixieRuntime):
@@ -230,7 +150,7 @@ def execute_scaffold(context: PixieContext, options, runtime: PixieRuntime):
         pkg_dir = fetch_git(runtime, tempdir, package)
     
     scaffold_file = locate_scaffold_file(pkg_dir, script)
-    _log.debug('scaffold file: %s', scaffold_file)
+    _log.debug('using pixie file: %s', scaffold_file)
 
     if scaffold_file:
         pkg_dir = os.path.dirname(scaffold_file)
@@ -244,7 +164,15 @@ def execute_scaffold(context: PixieContext, options, runtime: PixieRuntime):
         config = {
             'jobs': {
                 job_name: {
-                    'steps': options.get('steps', [{ 'action': 'fetch' }])
+                    'context': {
+                        'source': '.'
+                    },
+                    'steps': options.get('steps', [{
+                        'action': 'fetch',
+                        'with': {
+                            'source': '${{ source }}'
+                        }
+                    }])
                 }
             }
         }
@@ -283,6 +211,12 @@ def execute_scaffold(context: PixieContext, options, runtime: PixieRuntime):
     context_options = render_options(job.get('context', {}), context)
     context.update(context_options)
     process_parameters(job.get('parameters', []), context, runtime)
+
+    if context.get('__target') is None:
+        context['__target'] = '.'
+    
+    _log.debug('%s', context)
+
     steps: list = job.get('steps', [])
 
     step_execution.execute(context, runtime, steps_context, steps)

@@ -23,18 +23,25 @@ class AddColorFormatter(logging.Formatter):
         )
         return color + record.levelname + "\033[1;0m: " + msg
 
-
-def apply_cli(job, script, package, context, context_from, target):
+@click.command("run", help="Used to run a pixie job.")
+@click.argument('job')
+@click.option('-p', '--package', default='.', help='Package to run.')
+@click.option('-s', '--script', default='.pixie.yaml', help='Path to the pixie script.')
+@click.option('-c', '--context', multiple=True, help='Context values to set.')
+@click.option('--context-from', help='File used to set context')
+@click.option('-t', '--target', default='.', help='Directory to use when generating files')
+def run_cli(job, package, script, context, context_from, target):
     file_context = utils.read_json(context_from, {})
 
     user_context_file = os.path.realpath(os.path.expanduser('~/.pixie/context.yaml'))
     user_context = utils.read_yaml(user_context_file, {})
-    file_context = utils.read_json(context_from, {})
-    p_context = PixieContext(
-        env=os.environ,
-        __target=target
-    )
 
+    cwd_context_file = os.path.realpath(os.path.expanduser('./.pixierc.yaml'))
+    cwd_context = utils.read_yaml(cwd_context_file, {})
+
+    file_context = utils.read_json(context_from, {})    
+
+    p_context = {}
     c: str
     for c in context:
         eq_idx = c.index('=')
@@ -43,25 +50,28 @@ def apply_cli(job, script, package, context, context_from, target):
         p_context[parameter_name] = parameter_value
     
     try:
-        engine.run(p_context, {
+        ctx = utils.merge(file_context, user_context)
+        ctx = utils.merge(cwd_context, ctx)
+        ctx = utils.merge(p_context, ctx)
+
+        context2 = PixieContext(
+            env=os.environ,
+            __target=target
+        )
+
+        engine.run(context2, {
             'script': script,
             'job': job,
             'package': package,
-            'context': utils.merge(file_context, user_context)
+            'context': ctx
         }, PixieConsoleRuntime())
     except KeyboardInterrupt:
         pass
 
-@click.command(context_settings=dict(help_option_names=['-h', '--help']))
-@click.argument('job')
-@click.argument('package')
+@click.group(context_settings=dict(help_option_names=['-h', '--help']))
 @click.version_option(__version__)
-@click.option('-s', '--script', default='.pixie.yaml', help='Path to the pixie script.')
-@click.option('-c', '--context', multiple=True, help='Context values to set.')
-@click.option('--context-from', help='File used to set context')
-@click.option('--target', default='.', help='Directory to use when generating files')
 @click.option('--log-level', default='info', help='The log level to output')
-def cli(job, script, package, context, context_from, target, log_level):
+def cli(log_level):
     stdout_hdlr = logging.StreamHandler(stream=sys.stdout)
     stdout_hdlr.setFormatter(AddColorFormatter())
 
@@ -73,10 +83,9 @@ def cli(job, script, package, context, context_from, target, log_level):
     stdout_hdlr.setLevel(loglevel)
     logging.root.setLevel(loglevel)
     logging.root.addHandler(stdout_hdlr)
-    
-    apply_cli(job, script, package, context, context_from, target)
 
-#cli.add_command(apply_cli)
+cli.add_command(run_cli)
+
 
 if __name__ == '__main__':
     cli()

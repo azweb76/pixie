@@ -69,10 +69,10 @@ class PixieStepExecution():
                 'action': 'set_context',
                 'with': step['set_context']
             }, **step)
-        elif 'scaffold' in step:
+        elif 'pixie' in step:
             return dict({
-                'action': 'scaffold',
-                'with': step['scaffold']
+                'action': 'pixie',
+                'with': step['pixie']
             }, **step)
         return step
 
@@ -116,6 +116,7 @@ class PixieStepExecution():
                     if is_plugin:
                         if isinstance(executor_step_name, collections.Mapping):
                             step_options['__id'] = step_id
+                        _log.debug('%s: %s', step_id, step_options);
                         result = executor(context, step_options, runtime)
                     else:
                         if isinstance(step_options, collections.Mapping):

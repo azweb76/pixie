@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pixie-sdk"
-version = "0.0.4"
+version = "0.0.5"
 description = "Python-based tool used to run pixie scripts."
 authors = ["Dan Clayton <dan@azwebmaster.com>"]
 

@@ -38,6 +38,7 @@ class FetchStep(PixieStep):
         opts = render_options(step, context)
 
         source = opts.get('source', '.')
+        _log.debug('fetch source: %s', source)
         full_pkg_dir = context.resolve_package_path(source)
         target = opts.get('target', '.')
         full_target = context.resolve_target_path(target)
