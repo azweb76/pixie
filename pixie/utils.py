@@ -29,6 +29,12 @@ def read_yaml(path, default_value):
     return default_value
 
 
+def save_yaml(data, path):
+    yaml = YAML()
+    with open(path, 'w') as fhd:
+        return yaml.dump(data, fhd)
+
+
 def merge(source, destination):
     for key, value in source.items():
         if isinstance(value, dict):

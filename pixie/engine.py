@@ -2,8 +2,10 @@
 # coding: utf-8
 
 import collections
+import glob
 import logging
 import os
+import pathlib
 import re
 import sys
 import tempfile
@@ -17,6 +19,7 @@ from .plugin import PixiePluginContext
 from .plugins import load_plugins
 from .rendering import render_options, render_text, render_value
 from .runtime import PixieRuntime
+from . import utils
 
 
 _log = logging.getLogger(__name__)
@@ -131,8 +134,6 @@ def run(context: PixieContext, options, runtime: PixieRuntime):
 
 
 def execute_scaffold(context: PixieContext, options, runtime: PixieRuntime):
-    packages_dir = os.path.realpath(os.path.expanduser('~/.pixie/packages'))
-    tempdir = options.get('temp', packages_dir)
     package = options['package']
 
     yaml = YAML()
@@ -147,7 +148,7 @@ def execute_scaffold(context: PixieContext, options, runtime: PixieRuntime):
         _log.debug('using local package \'%s\'', package_path)
         pkg_dir = package_path
     else:
-        pkg_dir = fetch_git(runtime, tempdir, package)
+        pkg_dir = fetch_package(runtime, options, package)
     
     scaffold_file = locate_scaffold_file(pkg_dir, script)
     _log.debug('using pixie file: %s', scaffold_file)
@@ -164,13 +165,10 @@ def execute_scaffold(context: PixieContext, options, runtime: PixieRuntime):
         config = {
             'jobs': {
                 job_name: {
-                    'context': {
-                        'source': '.'
-                    },
                     'steps': options.get('steps', [{
                         'action': 'fetch',
                         'with': {
-                            'source': '${{ source }}'
+                            'source': '${{ source | default(".") }}'
                         }
                     }])
                 }
@@ -224,7 +222,31 @@ def execute_scaffold(context: PixieContext, options, runtime: PixieRuntime):
     return context
 
 
-def fetch_git(runtime, tempdir, package):
+def discover(runtime, options, package):
+    result = {}
+    pkg_dir = pathlib.Path(fetch_package(runtime, options, package))
+    for f in pkg_dir.glob('**/.pixie.yaml'):
+        pixie_config = utils.read_yaml(str(f), {})
+        if 'name' in pixie_config:
+            pkg_name = pixie_config['name']
+            jobs = pixie_config.get('jobs')
+            for job_name in jobs:
+                job = jobs[job_name]
+                alias_name = f'{pkg_name}/{job_name}'
+                result[alias_name] = dict(
+                    package=package,
+                    job=job_name,
+                    description=job.get('description', ''),
+                    script=str(f.relative_to(pkg_dir))
+                )
+    return result
+
+
+def fetch_package(runtime, options, package):
+
+    packages_dir = os.path.realpath(os.path.expanduser('~/.pixie/packages'))
+    tempdir = options.get('temp', packages_dir)
+
     package_parts = package.split('@')
     if len(package_parts) == 1:
         package_name = package_parts[0]

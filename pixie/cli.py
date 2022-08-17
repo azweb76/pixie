@@ -23,6 +23,25 @@ class AddColorFormatter(logging.Formatter):
         )
         return color + record.levelname + "\033[1;0m: " + msg
 
+@click.command("discover", help="Discover pixies in a package.")
+@click.option('-p', '--package', default='.', help='Package to run.')
+def discover_cli(package):
+    user_config_file = os.path.realpath(os.path.expanduser('~/.pixie/config.yaml'))
+    user_config = utils.read_yaml(user_config_file, {})
+    library = user_config.get('library', {})
+
+    runtime = PixieConsoleRuntime()
+    aliases = engine.discover(runtime, {}, package)
+    library[package] = aliases
+    user_config['library'] = library
+
+    utils.save_yaml(user_config, user_config_file)
+
+    for alias_name in aliases:
+        alias = aliases[alias_name]
+        click.echo(f'discovered {alias_name}: {alias["description"]}')
+
+
 @click.command("run", help="Used to run a pixie job.")
 @click.argument('job')
 @click.option('-p', '--package', default='.', help='Package to run.')
@@ -31,6 +50,10 @@ class AddColorFormatter(logging.Formatter):
 @click.option('--context-from', help='File used to set context')
 @click.option('-t', '--target', default='.', help='Directory to use when generating files')
 def run_cli(job, package, script, context, context_from, target):
+    user_config_file = os.path.realpath(os.path.expanduser('~/.pixie/config.yaml'))
+    user_config = utils.read_yaml(user_config_file, {})
+    library = user_config.get('library', {})
+
     file_context = utils.read_json(context_from, {})
 
     user_context_file = os.path.realpath(os.path.expanduser('~/.pixie/context.yaml'))
@@ -59,6 +82,15 @@ def run_cli(job, package, script, context, context_from, target):
             __target=target
         )
 
+        for package_name in library:
+            lib_pkg = library[package_name]
+            if job in lib_pkg:
+                job_alias = lib_pkg[job]
+                script = job_alias['script']
+                package = job_alias['package']
+                job = job_alias['job']
+                break
+
         engine.run(context2, {
             'script': script,
             'job': job,
@@ -85,6 +117,7 @@ def cli(log_level):
     logging.root.addHandler(stdout_hdlr)
 
 cli.add_command(run_cli)
+cli.add_command(discover_cli)
 
 
 if __name__ == '__main__':
