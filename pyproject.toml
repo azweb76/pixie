@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pixie-sdk"
-version = "0.0.5"
+version = "0.0.10"
 description = "Python-based tool used to run pixie scripts."
 authors = ["Dan Clayton <dan@azwebmaster.com>"]
 
@@ -17,6 +17,7 @@ GitPython = "^3.1.24"
 "ruamel.yaml" = "^0.17.20"
 requests = "^2.27.1"
 inquirer = "^2.10.0"
+termcolor = "^1.1.0"
 
 [tool.poetry.scripts]
 pix = "pixie.cli:cli"

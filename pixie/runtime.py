@@ -5,6 +5,7 @@ import inquirer
 import sys
 
 from pixie.context import PixieContext
+from pixie.config import PixieConfig
 from pixie.rendering import render_text
 
 CLI_COLORS = {
@@ -22,6 +23,10 @@ CLI_COLORS = {
 }
 
 class PixieRuntime:
+    config: PixieConfig
+    def __init__(self, config: PixieConfig) -> None:
+        self.config = config
+        
     def write(self, message: str, format=False):
         pass
 

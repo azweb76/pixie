@@ -3,10 +3,12 @@ import sys
 import click
 import logging
 
-from click.decorators import help_option
+from termcolor import colored
+from click.shell_completion import CompletionItem
 
 from pixie import __version__
 from pixie import engine, utils
+from pixie.config import PixieConfig
 from pixie.context import PixieContext
 from pixie.runtime import PixieConsoleRuntime
 
@@ -23,36 +25,86 @@ class AddColorFormatter(logging.Formatter):
         )
         return color + record.levelname + "\033[1;0m: " + msg
 
+
+def get_aliases():
+    config = PixieConfig.from_user()
+
+    library = config.get('library', {})
+
+    aliases = []
+    for package_name in library:
+        package = library[package_name]
+        for alias_name in package:
+            aliases.append(alias_name)
+    return aliases
+
+
+def get_library_packages():
+    config = PixieConfig.from_user()
+    library = config.get('library', {})
+
+    package_names = []
+    for package_name in library:
+        package_names.append(package_name)
+    return package_names
+
+
+def complete_library_packages(ctx, param, incomplete):
+    package_names = list(get_library_packages())
+    return [
+        name for name in package_names if name.startswith(incomplete)
+    ]
+
+
+def complete_library_aliases(ctx, param, incomplete):
+    aliases = list(get_aliases())
+    return [
+        name for name in aliases if name.startswith(incomplete)
+    ]
+
+
 @click.command("discover", help="Discover pixies in a package.")
-@click.option('-p', '--package', default='.', help='Package to run.')
+@click.option('-p', '--package', default='.', help='Package to run.', shell_complete=complete_library_packages)
 def discover_cli(package):
-    user_config_file = os.path.realpath(os.path.expanduser('~/.pixie/config.yaml'))
-    user_config = utils.read_yaml(user_config_file, {})
-    library = user_config.get('library', {})
+    config = PixieConfig.from_user()
+    library = config.get('library', {})
 
     runtime = PixieConsoleRuntime()
     aliases = engine.discover(runtime, {}, package)
     library[package] = aliases
-    user_config['library'] = library
+    config['library'] = library
 
-    utils.save_yaml(user_config, user_config_file)
+    config.save_user()
 
     for alias_name in aliases:
         alias = aliases[alias_name]
-        click.echo(f'discovered {alias_name}: {alias["description"]}')
+        click.echo(f'discovered {colored(alias_name, "green")}: {alias["description"]}')
+
+
+@click.command("list", help="List all discovered pixies.")
+def list_cli():
+    config = PixieConfig.from_user()
+    library = config.get('library', {})
+
+    for package_name in library:
+        package = library[package_name]
+        click.echo(colored(package_name + ':', 'grey'))
+        for alias_name in package:
+            alias = package[alias_name]
+            click.echo('  ' + colored(alias_name, 'green') + ': ' + alias["description"])
 
 
 @click.command("run", help="Used to run a pixie job.")
-@click.argument('job')
+@click.argument('job', shell_complete=complete_library_aliases)
 @click.option('-p', '--package', default='.', help='Package to run.')
 @click.option('-s', '--script', default='.pixie.yaml', help='Path to the pixie script.')
 @click.option('-c', '--context', multiple=True, help='Context values to set.')
 @click.option('--context-from', help='File used to set context')
 @click.option('-t', '--target', default='.', help='Directory to use when generating files')
 def run_cli(job, package, script, context, context_from, target):
-    user_config_file = os.path.realpath(os.path.expanduser('~/.pixie/config.yaml'))
-    user_config = utils.read_yaml(user_config_file, {})
-    library = user_config.get('library', {})
+    config = PixieConfig.from_user()
+
+    library = config.get('library', {})
 
     file_context = utils.read_json(context_from, {})
 
@@ -96,7 +148,7 @@ def run_cli(job, package, script, context, context_from, target):
             'job': job,
             'package': package,
             'context': ctx
-        }, PixieConsoleRuntime())
+        }, PixieConsoleRuntime(config))
     except KeyboardInterrupt:
         pass
 
@@ -118,6 +170,7 @@ def cli(log_level):
 
 cli.add_command(run_cli)
 cli.add_command(discover_cli)
+cli.add_command(list_cli)
 
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-import collections
+from collections.abc import Mapping
 import logging
 
 from pixie.rendering import render_options, render_text, render_value
@@ -114,12 +114,12 @@ class PixieStepExecution():
                     
                     _log.debug(f'[{step_id}] running')
                     if is_plugin:
-                        if isinstance(executor_step_name, collections.Mapping):
+                        if isinstance(executor_step_name, Mapping):
                             step_options['__id'] = step_id
                         _log.debug('%s: %s', step_id, step_options);
                         result = executor(context, step_options, runtime)
                     else:
-                        if isinstance(step_options, collections.Mapping):
+                        if isinstance(step_options, Mapping):
                             step_options = render_options(step_options, context)
                             args = step_options.get('args', [step_options])
                             kwargs = step_options.get('kwargs', {})

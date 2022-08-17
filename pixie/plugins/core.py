@@ -52,7 +52,10 @@ class ModuleStep(PixieStep):
         spec.loader.exec_module(foo)
         main_fn = getattr(foo, 'main')
 
-        module_context = render_options(options.get('context', {}), context)
+        module_context = PixieContext(
+            **render_options(options.get('context', {}), context),
+            __target=context.get('__target', os.getcwd())
+        )
 
         return main_fn(module_context, options, runtime)
 

@@ -10,6 +10,7 @@ import re
 import sys
 import tempfile
 
+from git import Repo
 from ruamel.yaml import YAML
 
 from pixie.steps import PixieStepExecution
@@ -114,6 +115,14 @@ def locate_scaffold_file(path, name):
 
 def process_parameters(parameters, context: PixieContext, runtime: PixieRuntime):
     for parameter in (parameters or []):
+        parameter_overrides = runtime.config.get('parameterOverrides')
+        if parameter_overrides:
+            p_name = parameter['name']
+            for p_override in parameter_overrides:
+                if p_name in p_override.get('names', []):
+                    utils.merge(p_override.get('overrides', {}), parameter)
+                    break
+
         parameter_options = render_options(parameter, context)
         parameter_name = parameter_options['name']
         context_source = parameter_options.get('context_source', parameter_name)
@@ -211,7 +220,7 @@ def execute_scaffold(context: PixieContext, options, runtime: PixieRuntime):
     process_parameters(job.get('parameters', []), context, runtime)
 
     if context.get('__target') is None:
-        context['__target'] = '.'
+        context['__target'] = os.getcwd()
     
     _log.debug('%s', context)
 
@@ -261,25 +270,17 @@ def fetch_package(runtime, options, package):
     pkg_dir = os.path.join(tempdir, f'{package_name}@{package_version}')
     _log.debug('using package dir: %s', pkg_dir)
 
-    rc = 9999
     if os.path.exists(pkg_dir):
         _log.debug('[git] updating %s package', package)
-        rc = os.system(
-                """(cd {pkg_dir} && git pull >/dev/null 2>&1)""".format(pkg_dir=pkg_dir))
-        if rc != 0:
-            _log.error('package %s is having issues, repairing', package)
-            rm_rf(pkg_dir)
-
-    if rc != 0:
+        repo = Repo(pkg_dir)
+        repo.remotes.origin.pull()
+    else:
         _log.debug('[git] pulling %s package', package_name)
-        rc = os.system(f"""
-        git clone https://{package_name} {pkg_dir} >/dev/null 2>&1
-        """)
-    if rc != 0:
-        raise Exception(
-                'Failed to pull scaffold package %s' % package)
+        Repo.clone_from(
+            f'https://{package_name}',
+            pkg_dir,
+            branch=package_version,
+            depth=1
+        )
 
-    rc = os.system(f"""(cd {pkg_dir} && git checkout -f {package_version} >/dev/null 2>&1)""")
-    if rc != 0:
-        raise Exception('Failed to load version %s' % package_version)
     return pkg_dir
