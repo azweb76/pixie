@@ -4,13 +4,15 @@ import click
 import logging
 
 from termcolor import colored
-from click.shell_completion import CompletionItem
 
-from pixie import __version__
-from pixie import engine, utils
-from pixie.config import PixieConfig
-from pixie.context import PixieContext
-from pixie.runtime import PixieConsoleRuntime
+from . import __version__
+from . import engine, utils
+from .config import PixieConfig
+from .context import PixieContext
+from .runtime import PixieConsoleRuntime
+
+
+_log = logging.getLogger(__name__)
 
 
 class AddColorFormatter(logging.Formatter):
@@ -64,21 +66,26 @@ def complete_library_aliases(ctx, param, incomplete):
 
 
 @click.command("discover", help="Discover pixies in a package.")
-@click.option('-p', '--package', default='.', help='Package to run.', shell_complete=complete_library_packages)
-def discover_cli(package):
+@click.argument('package', default='.', shell_complete=complete_library_packages)
+@click.option('-s', '--save', is_flag=True, help='Path to the pixie script.')
+def discover_cli(package, save):
     config = PixieConfig.from_user()
     library = config.get('library', {})
 
-    runtime = PixieConsoleRuntime()
-    aliases = engine.discover(runtime, {}, package)
+    runtime = PixieConsoleRuntime(config)
+    package_info = engine.discover(runtime, {}, package)
+    aliases = package_info['aliases']
     library[package] = aliases
     config['library'] = library
 
-    config.save_user()
-
+    click.echo('📦 Package: ' + colored(package, 'green') + ' ' + colored('(' + package_info['package_path'] + ')', 'grey') + '\n')
     for alias_name in aliases:
         alias = aliases[alias_name]
-        click.echo(f'discovered {colored(alias_name, "green")}: {alias["description"]}')
+        click.echo('  ➜ ' + colored(alias_name, "green") + f': {alias["description"]}')
+    
+    if save:
+        config.save_user()
+        click.echo('\n' + colored('Saved to ' + config.file, "grey"))
 
 
 @click.command("list", help="List all discovered pixies.")
@@ -94,9 +101,60 @@ def list_cli():
             click.echo('  ' + colored(alias_name, 'green') + ': ' + alias["description"])
 
 
+@click.command("info", help="Show information for a job.")
+@click.argument('job', shell_complete=complete_library_aliases)
+@click.option('-p', '--package', default='.', help='Pixie package name.', shell_complete=complete_library_packages)
+@click.option('-s', '--script', default='.pixie.yaml', help='Path to the pixie script.')
+def info_cli(job, package, script):
+    config = PixieConfig.from_user()
+    library = config.get('library', {})
+
+    for package_name in library:
+        lib_pkg = library[package_name]
+        if job in lib_pkg:
+            job_alias = lib_pkg[job]
+            script = job_alias['script']
+            package = job_alias['package']
+            job = job_alias['job']
+            break
+    
+    runtime = PixieConsoleRuntime(config)
+    actual_job = engine.get_job(dict(
+        package=package,
+        job=job,
+        script=script
+    ), runtime)
+
+    click.echo('Job: ' + colored(job, 'green') + ' (' + colored(package, 'grey') + ')')
+    if 'description' in actual_job:
+        click.echo(colored(actual_job['description'], 'grey'))
+
+    if '__script_url' in actual_job:
+        click.echo('\nScript: ' + colored(actual_job.get('__script_url', '<auto generated>'), 'green'))
+    else:
+        click.echo('\nScript: <auto generated>')
+
+    parameters = actual_job.get('parameters', [])
+
+    if parameters:
+        click.echo('\nParameters:')
+
+        for p in actual_job.get('parameters', []):
+            click.echo(f'  {p["name"]}: {colored(p.get("description"), "green")}')
+    else:
+        click.echo('\nParameters: None')
+
+
+@click.command("completion", help="Return shell completion script.")
+@click.argument('shell')
+def completion_cli(shell: str):
+    shell = shell.lower()
+    os.system(f'_PIXIE_COMPLETE={shell}_source pixie')
+
+
 @click.command("run", help="Used to run a pixie job.")
 @click.argument('job', shell_complete=complete_library_aliases)
-@click.option('-p', '--package', default='.', help='Package to run.')
+@click.option('-p', '--package', default='.', help='Package to run.', shell_complete=complete_library_packages)
 @click.option('-s', '--script', default='.pixie.yaml', help='Path to the pixie script.')
 @click.option('-c', '--context', multiple=True, help='Context values to set.')
 @click.option('--context-from', help='File used to set context')
@@ -154,7 +212,7 @@ def run_cli(job, package, script, context, context_from, target):
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
 @click.version_option(__version__)
-@click.option('--log-level', default='info', help='The log level to output')
+@click.option('--log-level', default='info', help='The log level to output (debug, info, warning, error)')
 def cli(log_level):
     stdout_hdlr = logging.StreamHandler(stream=sys.stdout)
     stdout_hdlr.setFormatter(AddColorFormatter())
@@ -168,9 +226,12 @@ def cli(log_level):
     logging.root.setLevel(loglevel)
     logging.root.addHandler(stdout_hdlr)
 
+
 cli.add_command(run_cli)
 cli.add_command(discover_cli)
 cli.add_command(list_cli)
+cli.add_command(info_cli)
+cli.add_command(completion_cli)
 
 
 if __name__ == '__main__':

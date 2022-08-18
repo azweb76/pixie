@@ -1,9 +1,9 @@
-from pixie.steps import PixieStep
 from github import Github
 
 import os
 from ruamel.yaml import YAML
 
+from ..steps import PixieStep
 from ..plugin import PixiePluginContext
 
 

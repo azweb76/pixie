@@ -9,12 +9,12 @@ import pathlib
 import re
 import sys
 import tempfile
+from urllib.parse import urljoin
 
 from git import Repo
 from ruamel.yaml import YAML
 
-from pixie.steps import PixieStepExecution
-
+from .steps import PixieStepExecution
 from .context import PixieContext
 from .plugin import PixiePluginContext
 from .plugins import load_plugins
@@ -142,6 +142,56 @@ def run(context: PixieContext, options, runtime: PixieRuntime):
     return context
 
 
+def get_job(options, runtime):
+    yaml = YAML()
+
+    script = options.get('script', '.pixie.yaml')
+
+    package = options['package']
+
+    pkg_dir, pkg_base_url = fetch_package(runtime, options, package)
+    
+    scaffold_file = locate_scaffold_file(pkg_dir, script)
+    _log.debug('using pixie file: %s', scaffold_file)
+
+    pixie_dir = pkg_dir
+    if scaffold_file:
+        pixie_dir = os.path.dirname(scaffold_file)
+    sys.path.append(pixie_dir)
+
+    job_name = options.get('job', 'default')
+    if scaffold_file is not None:
+        with open(scaffold_file, 'r') as fhd:
+            config = yaml.load(fhd)
+    elif job_name == 'scaffold':
+        config = {
+            'jobs': {
+                job_name: {
+                    'steps': options.get('steps', [{
+                        'action': 'fetch',
+                        'with': {
+                            'source': '${{ source | default(".") }}'
+                        }
+                    }])
+                }
+            }
+        }
+    else:
+        config = {
+            'jobs': {}
+        }
+    
+    job = config.get('jobs', {}).get(job_name)
+    job['__html_url'] = pkg_base_url
+    if scaffold_file:
+        job['__script'] = scaffold_file
+
+        script_relative_url = str(pathlib.Path(scaffold_file).relative_to(pkg_dir))
+        job['__script_relative'] = script_relative_url
+        job['__script_url'] = urljoin(pkg_base_url, script_relative_url)
+    return job
+
+
 def execute_scaffold(context: PixieContext, options, runtime: PixieRuntime):
     package = options['package']
 
@@ -157,7 +207,7 @@ def execute_scaffold(context: PixieContext, options, runtime: PixieRuntime):
         _log.debug('using local package \'%s\'', package_path)
         pkg_dir = package_path
     else:
-        pkg_dir = fetch_package(runtime, options, package)
+        pkg_dir, _ = fetch_package(runtime, options, package)
     
     scaffold_file = locate_scaffold_file(pkg_dir, script)
     _log.debug('using pixie file: %s', scaffold_file)
@@ -233,7 +283,8 @@ def execute_scaffold(context: PixieContext, options, runtime: PixieRuntime):
 
 def discover(runtime, options, package):
     result = {}
-    pkg_dir = pathlib.Path(fetch_package(runtime, options, package))
+    pkg_dir, package_path = fetch_package(runtime, options, package)
+    pkg_dir = pathlib.Path(pkg_dir)
     for f in pkg_dir.glob('**/.pixie.yaml'):
         pixie_config = utils.read_yaml(str(f), {})
         if 'name' in pixie_config:
@@ -248,10 +299,16 @@ def discover(runtime, options, package):
                     description=job.get('description', ''),
                     script=str(f.relative_to(pkg_dir))
                 )
-    return result
+    return {
+        'aliases': result,
+        'package_path': package_path
+    }
 
 
 def fetch_package(runtime, options, package):
+
+    if os.path.exists(package):
+        return package, os.path.realpath(package) + '/'
 
     packages_dir = os.path.realpath(os.path.expanduser('~/.pixie/packages'))
     tempdir = options.get('temp', packages_dir)
@@ -259,15 +316,17 @@ def fetch_package(runtime, options, package):
     package_parts = package.split('@')
     if len(package_parts) == 1:
         package_name = package_parts[0]
-        package_version = 'main'
+        package_version = None
+        package_version_suffix = ''
     else:
         package_name = package_parts[0]
         package_version = package_parts[1]
+        package_version_suffix = '@' + package_version
     package_name_parts = package_name.split('/')
     if len(package_name_parts) <= 2:
         package_name_parts = ['github.com'] + package_name_parts
         package_name = '/'.join(package_name_parts)
-    pkg_dir = os.path.join(tempdir, f'{package_name}@{package_version}')
+    pkg_dir = os.path.join(tempdir, f'{package_name}{package_version_suffix}')
     _log.debug('using package dir: %s', pkg_dir)
 
     if os.path.exists(pkg_dir):
@@ -276,11 +335,13 @@ def fetch_package(runtime, options, package):
         repo.remotes.origin.pull()
     else:
         _log.debug('[git] pulling %s package', package_name)
-        Repo.clone_from(
+        repo = Repo.clone_from(
             f'https://{package_name}',
             pkg_dir,
             branch=package_version,
             depth=1
         )
 
-    return pkg_dir
+    branch = repo.active_branch
+    package_base_url = urljoin(repo.remotes.origin.url + '/', f'blob/{branch}/')
+    return pkg_dir, package_base_url

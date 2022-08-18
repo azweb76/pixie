@@ -21,16 +21,19 @@ def read_json(path, default_value):
     return default_value
 
 
-def read_yaml(path, default_value):
+def read_yaml(path, default_value=None):
     if path and os.path.exists(path) and os.path.isfile(path):
         yaml = YAML()
         with open(path, 'r') as fhd:
-            return yaml.load(fhd)
+            value = yaml.load(fhd)
+            if value:
+                return value
     return default_value
 
 
 def save_yaml(data, path):
     yaml = YAML()
+    os.makedirs(os.path.basename(path), exist_ok=True)
     with open(path, 'w') as fhd:
         return yaml.dump(data, fhd)
 

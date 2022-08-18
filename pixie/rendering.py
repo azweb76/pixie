@@ -11,6 +11,7 @@ from jinja2 import Environment, StrictUndefined, Undefined, make_logging_undefin
 from jinja2 import FileSystemLoader
 from jinja2.nativetypes import NativeEnvironment
 from ruamel.yaml import YAML
+from termcolor import colored
 
 from pixie.context import PixieContext
 
@@ -23,6 +24,8 @@ class RenderUtils(object):  # pylint: disable=R0903
 
     def __init__(self) -> None:
         super().__init__()
+
+        self.colored = colored
 
     @classmethod
     def read_file(cls, path, parse=False):
