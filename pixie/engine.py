@@ -163,10 +163,11 @@ def get_job(options, runtime):
     if scaffold_file is not None:
         with open(scaffold_file, 'r') as fhd:
             config = yaml.load(fhd)
-    elif job_name == 'scaffold':
+    else:
         config = {
             'jobs': {
-                job_name: {
+                'scaffold': {
+                    'description': 'Scaffold all the files for this package',
                     'steps': options.get('steps', [{
                         'action': 'fetch',
                         'with': {
@@ -175,10 +176,6 @@ def get_job(options, runtime):
                     }])
                 }
             }
-        }
-    else:
-        config = {
-            'jobs': {}
         }
     
     job = config.get('jobs', {}).get(job_name)

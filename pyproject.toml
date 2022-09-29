@@ -12,12 +12,14 @@ packages = [
 python = "^3.9"
 click = "^8.1.3"
 Jinja2 = "3.0.3"
-PyGithub = "^1.55"
 GitPython = "^3.1.24"
 "ruamel.yaml" = "^0.17.20"
 requests = "^2.27.1"
 inquirer = "^2.10.0"
 termcolor = "^1.1.0"
+boto3 = "^1.24.82"
+pygithub = {git = "https://github.com/PyGithub/PyGithub.git", rev = "001970d4a828017f704f6744a5775b4207a6523c"}
+giturlparse = "^0.10.0"
 
 [tool.poetry.scripts]
 pix = "pixie.cli:cli"

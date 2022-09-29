@@ -10,8 +10,16 @@ pipx install pixie-sdk
 
 ## Usage
 
-Apply scaffolding.
+|command|description|
+|discov
+|run|Run a pixie job.|
+
+
+### run
+
+Run a pixie job.
 
 ```shell
-pixie scaffold actions/typescript-action
+# copy the files from actions/typescript-action to ./my-typescript-action
+pixie run scaffold --package actions/typescript-action --target ./my-typescript-action
 ```

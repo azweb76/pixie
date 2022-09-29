@@ -1,3 +1,4 @@
+import collections
 import importlib
 import importlib
 from importlib import util
@@ -5,6 +6,7 @@ import subprocess
 import sys
 import os
 
+from ..utils import merge
 from pixie.context import PixieContext
 from pixie.runtime import PixieRuntime
 from ..steps import PixieStep
@@ -24,8 +26,15 @@ class SetStep(PixieStep):
     def run(self, context: PixieContext, step: dict, runtime: PixieRuntime):
         context_names = step
         for context_name in context_names:
-            context[context_name] = render_value(
-                context_names[context_name], context)
+            if isinstance(context_names[context_name], collections.Mapping):
+                new_options = render_options(context_names[context_name], context)
+                if context_name in context:
+                    merge(new_options, context[context_name])
+                else:
+                    context[context_name] = new_options
+            else:
+                context[context_name] = render_value(
+                    context_names[context_name], context)
 
 
 class AddNoteStep(PixieStep):

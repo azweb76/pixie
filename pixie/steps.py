@@ -22,7 +22,7 @@ class PixieStepExecution():
     def get_executor(self, step, step_name: str, context):
         name_parts = step_name.split(':')
         obj_name = name_parts[0]
-        fn_name = name_parts[1] if len(name_parts) > 1 else 'run'
+        fn_name = ':'.join(name_parts[1:]) if len(name_parts) > 1 else 'run'
 
         if obj_name in self.plugin_context.steps:
             _log.debug('locating %s in plugin', step_name)
@@ -39,7 +39,7 @@ class PixieStepExecution():
             ctx = context[obj_name]
             if hasattr(ctx, fn_name):
                 return getattr(ctx, fn_name), False
-            _log.warning('%s executor not found in context', fn_name)
+            _log.warning('%s executor not found in %s context', fn_name, obj_name)
         return None, False
     
     def normalize_step(self, step):
@@ -62,6 +62,13 @@ class PixieStepExecution():
                 'action': 'print',
                 'with': {
                     'message': step['print']
+                }
+            }, **step)
+        elif 'dump' in step:
+            return dict({
+                'action': 'dump',
+                'with': {
+                    'message': step['dump']
                 }
             }, **step)
         elif 'set_context' in step:
@@ -123,9 +130,15 @@ class PixieStepExecution():
                             step_options = render_options(step_options, context)
                             args = step_options.get('args', [step_options])
                             kwargs = step_options.get('kwargs', {})
-                            result = executor(*args, **kwargs)
+                            if 'args' in step_options and 'kwargs' not in step_options:
+                                result = executor(*args)
+                            elif 'args' not in step_options and 'kwargs' in step_options:
+                                result = executor(**kwargs)
+                            else:
+                                result = executor(*args, **kwargs)
                         else:
                             result = executor(render_value(step_options, context))
                     if 'output_to_context' in step:
-                        context[step['output_to_context']] = result
+                        output_to_context = render_text(step.get('output_to_context', None), context)
+                        context[output_to_context] = result
                     context.set_step(step_id, result)

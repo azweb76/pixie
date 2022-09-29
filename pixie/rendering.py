@@ -5,7 +5,10 @@ from tabnanny import check
 import requests
 import tempfile
 import logging
+import boto3
 from typing import List
+from git import Repo
+from giturlparse import parse
 
 from jinja2 import Environment, StrictUndefined, Undefined, make_logging_undefined
 from jinja2 import FileSystemLoader
@@ -17,6 +20,40 @@ from pixie.context import PixieContext
 
 
 _log = logging.getLogger(name=__name__)
+
+
+class AwsUtils(object):
+    def get_parameter(self, name):
+        try:
+            session = boto3.Session()
+
+            ssm_client = session.client('ssm')
+            param = ssm_client.get_parameter(Name=name)
+            return param['Parameter']['Value']
+        except Exception as ex:
+            _log.debug(ex)
+        return ''
+
+
+class GitUtils(object):
+    def remote_info(self, path, remote_name):
+        try:
+            repo = Repo(path)
+            remote = repo.remote(remote_name)
+            return parse(remote.url, check_domain=False)
+        except Exception as ex:
+            _log.debug(ex)
+        return {}
+    
+    def owner_repo(self, path, remote_name):
+        try:
+            repo = Repo(path)
+            remote = repo.remote(remote_name)
+            u = parse(remote.url, check_domain=False)
+            return u.owner + '/' + u.repo
+        except Exception as ex:
+            _log.debug(ex)
+        return ''
 
 
 class RenderUtils(object):  # pylint: disable=R0903
@@ -123,16 +160,25 @@ def get_parser(path):
         exit('Parser format not supported: %s' % ext)
 
 
+def get_utils():
+    return dict(
+        utils=RenderUtils(),
+        aws=AwsUtils(),
+        git=GitUtils()
+    )
+
+
 def render(template_name, context, template_dir):
     """Used to render a Jinja template."""
 
     env = Environment(loader=FileSystemLoader(template_dir), variable_start_string='${{', variable_end_string='}}', keep_trailing_newline=True)
     add_filters(env)
-    utils = RenderUtils()
+    utils = get_utils()
 
     template = env.get_template(template_name)
 
-    return template.render(utils=utils, context=context, **context)
+    return template.render(context=context, **utils, **context)
+
 
 def add_filters(env):
     env.filters['formatlist'] = format_list
@@ -155,11 +201,12 @@ def render_value(text, context: PixieContext):
 
     env = NativeEnvironment(variable_start_string='${{', variable_end_string='}}')
     add_filters(env)
-    utils = RenderUtils()
+
+    utils = get_utils()
 
     template = env.from_string(text)
 
-    return template.render(utils=utils, context=context, **context)
+    return template.render(context=context, **utils, **context)
 
 
 def render_text(text, context: PixieContext):
@@ -170,11 +217,11 @@ def render_text(text, context: PixieContext):
 
     env = Environment(variable_start_string='${{', variable_end_string='}}', keep_trailing_newline=True)
     add_filters(env)
-    utils = RenderUtils()
+    utils = get_utils()
 
     template = env.from_string(text)
 
-    return template.render(utils=utils, context=context, **context)
+    return template.render(context=context, **utils, **context)
 
 
 def _render_value(value, context: PixieContext, exclude_keys: List[str]):
