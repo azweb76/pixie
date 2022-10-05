@@ -38,9 +38,9 @@ pipx upgrade pixie-sdk
 
 |command|description|
 |---|---|
-|`discover`|Discover one or more pixies|
-|`info`|View information about a pixie job.|
-|`run`|Run a pixie job.|
+|`discover`|Discover pixies in a package.|
+|`info`|Show information for a job.|
+|`run`|Used to run a pixie job.|
 
 ### discover
 
