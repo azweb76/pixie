@@ -120,30 +120,4 @@ jobs:
 
 ## Steps
 
-### Core
-
-#### print
-
-Print to runtime stream (stdout).
-
-```yaml
-# shortcut
-print: My message
-
-# long
-action: print
-message: My message
-```
-
-#### log
-
-Write a log entry.
-
-```yaml
-# shortcut
-log: My message
-
-# long
-action: log
-message: My message
-```
+See [Plugins](docs/plugins/README.md) documentation.
