@@ -37,6 +37,7 @@ pipx upgrade pixie-sdk
 ## Usage
 
 |command|description|
+|---|---|
 |`discover`|Discover one or more pixies|
 |`info`|View information about a pixie job.|
 |`run`|Run a pixie job.|
