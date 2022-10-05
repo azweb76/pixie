@@ -140,7 +140,7 @@ def yaml_format(value, **kw):
     yaml = YAML()
     stream = StringIO()
     yaml.dump(value, stream, **kw)
-    return stream.getvalue()
+    return stream.getvalue().rstrip()
 
 
 def json_format(value):
