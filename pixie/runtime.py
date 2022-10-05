@@ -54,7 +54,14 @@ class PixieConsoleRuntime(PixieRuntime):
         if default is None:
              validate_fn = lambda _, x: re.match(".+", x)
         description = prompt.get('description', name)
-        if 'choices' in prompt:
+        if prompt.get('type') == 'checklist':
+            answers = inquirer.prompt([
+                inquirer.Checkbox("value", message=description, default=default, choices=prompt.get('choices', []))
+            ])
+            if answers is None:
+                raise KeyboardInterrupt()
+            return answers["value"]
+        elif 'choices' in prompt:
             choices = prompt['choices']
             answers = inquirer.prompt([
                 inquirer.List("value", message=description, choices=choices, default=default, validate=validate_fn)
@@ -62,7 +69,13 @@ class PixieConsoleRuntime(PixieRuntime):
             if answers is None:
                 raise KeyboardInterrupt()
             return answers["value"]
-
+        if prompt.get('type') == 'confirm':
+            answers = inquirer.prompt([
+                inquirer.Confirm("value", message=description, default=default)
+            ])
+            if answers is None:
+                raise KeyboardInterrupt()
+            return answers["value"]
         if prompt.get('secure', False):
             answers = inquirer.prompt([
                 inquirer.Password("value", message=description, default=default, validate=validate_fn)

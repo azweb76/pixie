@@ -36,7 +36,9 @@ known_types = {
     'int': int,
     'bool': str2bool,
     'str': str,
-    'float': float
+    'float': float,
+    'checklist': list,
+    'confirm': str2bool
 }
 
 

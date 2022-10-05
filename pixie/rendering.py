@@ -1,6 +1,8 @@
 import hashlib
+from io import StringIO
 import json
 import os
+import re
 from tabnanny import check
 import requests
 import tempfile
@@ -10,7 +12,7 @@ from typing import List
 from git import Repo
 from giturlparse import parse
 
-from jinja2 import Environment, StrictUndefined, Undefined, make_logging_undefined
+from jinja2 import Environment, ChainableUndefined
 from jinja2 import FileSystemLoader
 from jinja2.nativetypes import NativeEnvironment
 from ruamel.yaml import YAML
@@ -23,9 +25,11 @@ _log = logging.getLogger(name=__name__)
 
 
 class AwsUtils(object):
-    def get_parameter(self, name):
+    def get_parameter(self, name, profile_name=None):
         try:
-            session = boto3.Session()
+            session = boto3.Session(
+                profile_name=profile_name
+            )
 
             ssm_client = session.client('ssm')
             param = ssm_client.get_parameter(Name=name)
@@ -130,11 +134,13 @@ def format_list(value, format='{value}'):
     return value
 
 
-def yaml_format(value):
+def yaml_format(value, **kw):
     if value is None:
         return 'null'
     yaml = YAML()
-    return yaml.dump(value)
+    stream = StringIO()
+    yaml.dump(value, stream, **kw)
+    return stream.getvalue()
 
 
 def json_format(value):
@@ -164,14 +170,15 @@ def get_utils():
     return dict(
         utils=RenderUtils(),
         aws=AwsUtils(),
-        git=GitUtils()
+        git=GitUtils(),
+        path=os.path
     )
 
 
 def render(template_name, context, template_dir):
     """Used to render a Jinja template."""
 
-    env = Environment(loader=FileSystemLoader(template_dir), variable_start_string='${{', variable_end_string='}}', keep_trailing_newline=True)
+    env = Environment(loader=FileSystemLoader(template_dir), variable_start_string='${{', variable_end_string='}}', keep_trailing_newline=True, undefined=ChainableUndefined)
     add_filters(env)
     utils = get_utils()
 
@@ -199,7 +206,7 @@ def render_value(text, context: PixieContext):
     if '\n' in text:
         return render_text(text, context)
 
-    env = NativeEnvironment(variable_start_string='${{', variable_end_string='}}')
+    env = NativeEnvironment(variable_start_string='${{', variable_end_string='}}', undefined=ChainableUndefined)
     add_filters(env)
 
     utils = get_utils()
@@ -215,7 +222,7 @@ def render_text(text, context: PixieContext):
     if text is None:
         return None
 
-    env = Environment(variable_start_string='${{', variable_end_string='}}', keep_trailing_newline=True)
+    env = Environment(variable_start_string='${{', variable_end_string='}}', keep_trailing_newline=True, undefined=ChainableUndefined)
     add_filters(env)
     utils = get_utils()
 

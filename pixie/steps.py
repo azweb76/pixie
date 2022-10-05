@@ -64,6 +64,11 @@ class PixieStepExecution():
                     'message': step['print']
                 }
             }, **step)
+        elif 'prompt' in step:
+            return dict({
+                'action': 'prompt',
+                'with': step['prompt']
+            }, **step)
         elif 'dump' in step:
             return dict({
                 'action': 'dump',
@@ -83,62 +88,75 @@ class PixieStepExecution():
             }, **step)
         return step
 
+    def _execute(self, step, context: PixieContext, runtime, steps_context):
+        if 'if' in step:
+            enabled = render_value(step['if'], context)
+            if enabled == False:
+                return
+        if 'group' in step:
+            group_steps = step['group']
+            self.execute(context, runtime, steps_context, group_steps)
+        elif 'foreach' in step:
+            foreach_steps = step['foreach']
+            items = render_value(foreach_steps.get('items', []), context)
+            context_name = foreach_steps.get('item_name', None)
+            step_id = step.get('id', 'foreach')
+            for item in items:
+                context.set_step(step_id, item)
+                if context_name is not None:
+                    context[context_name] = item
+                self.execute(context, runtime, steps_context, foreach_steps.get('steps', []))
+        else:
+            executor = None
+            executor_step_name = None
+            is_plugin = False
+            action_name = step.get('action', None)
+            executor, is_plugin = self.get_executor(step, action_name, context)
+            _log.debug(step)
+            if executor:
+                step_options = step.get('with', {})
+
+                step_id = step.get('id', action_name)
+                description = render_text(step.get('description', None), context)
+                if description:
+                    _log.info(f'[{step_id}] {description}')
+                
+                _log.debug(f'[{step_id}] running')
+                if is_plugin:
+                    if isinstance(executor_step_name, Mapping):
+                        step_options['__id'] = step_id
+                    _log.debug('%s: %s', step_id, step_options);
+                    result = executor(context, step_options, runtime)
+                else:
+                    if isinstance(step_options, Mapping):
+                        step_options = render_options(step_options, context)
+                        args = step_options.get('args', [step_options])
+                        kwargs = step_options.get('kwargs', {})
+                        if 'args' in step_options and 'kwargs' not in step_options:
+                            result = executor(*args)
+                        elif 'args' not in step_options and 'kwargs' in step_options:
+                            result = executor(**kwargs)
+                        else:
+                            result = executor(*args, **kwargs)
+                    else:
+                        result = executor(render_value(step_options, context))
+                if 'output_to_context' in step:
+                    output_to_context = render_text(step.get('output_to_context', None), context)
+                    context[output_to_context] = result
+                context.set_step(step_id, result)
+
     def execute(self, context: PixieContext, runtime, steps_context, steps):
         step: dict
         for step in steps:
             step = self.normalize_step(step)
-            if 'if' in step:
-                enabled = render_value(step['if'], context)
-                if enabled == False:
-                    continue
-            if 'group' in step:
-                group_steps = step['group']
-                self.execute(context, runtime, steps_context, group_steps)
-            elif 'foreach' in step:
-                foreach_steps = step['foreach']
-                items = render_value(foreach_steps.get('items', []), context)
-                context_name = foreach_steps.get('item_name', None)
-                step_id = step.get('id', 'foreach')
-                for item in items:
-                    context.set_step(step_id, item)
-                    if context_name is not None:
-                        context[context_name] = item
-                    self.execute(context, runtime, steps_context, foreach_steps.get('steps', []))
-            else:
-                executor = None
-                executor_step_name = None
-                is_plugin = False
-                action_name = step.get('action', None)
-                executor, is_plugin = self.get_executor(step, action_name, context)
-                _log.debug(step)
-                if executor:
-                    step_options = step.get('with', {})
+            on_error = step.get('on_error')
+            try:
+                self._execute(step, context, runtime, steps_context)
+            except Exception as ex:
+                if on_error == 'warn':
+                    _log.warn(ex)
+                elif on_error == 'ignore':
+                    _log.debug(ex)
+                else:
+                    raise
 
-                    step_id = step.get('id', action_name)
-                    description = render_text(step.get('description', None), context)
-                    if description:
-                        _log.info(f'[{step_id}] {description}')
-                    
-                    _log.debug(f'[{step_id}] running')
-                    if is_plugin:
-                        if isinstance(executor_step_name, Mapping):
-                            step_options['__id'] = step_id
-                        _log.debug('%s: %s', step_id, step_options);
-                        result = executor(context, step_options, runtime)
-                    else:
-                        if isinstance(step_options, Mapping):
-                            step_options = render_options(step_options, context)
-                            args = step_options.get('args', [step_options])
-                            kwargs = step_options.get('kwargs', {})
-                            if 'args' in step_options and 'kwargs' not in step_options:
-                                result = executor(*args)
-                            elif 'args' not in step_options and 'kwargs' in step_options:
-                                result = executor(**kwargs)
-                            else:
-                                result = executor(*args, **kwargs)
-                        else:
-                            result = executor(render_value(step_options, context))
-                    if 'output_to_context' in step:
-                        output_to_context = render_text(step.get('output_to_context', None), context)
-                        context[output_to_context] = result
-                    context.set_step(step_id, result)

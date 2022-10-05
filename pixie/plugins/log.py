@@ -39,7 +39,10 @@ class PrintStep(PixieStep):
 class DumpStep(PixieStep):
     def run(self, context: PixieContext, step: dict, runtime: PixieRuntime):
         message = render_value(step['message'], context)
-        print(f'=== DUMP: { step["message"] } ===')
-        print(step['message'])
+        runtime.write('{BOLD}{GREEN}=== DUMP: ' + step["message"] + ' ==={END}\n', format=True)
+        print(message)
+        runtime.write('{GREEN}--- attributes ---{END}\n', format=True)
         print(dir(message))
-        print(vars(message))
+        if hasattr(message, '__dict__'):
+            runtime.write('{GREEN}--- dictionary attributes ---{END}\n', format=True)
+            print(vars(message))

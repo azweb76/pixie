@@ -20,6 +20,16 @@ def init(context: PixiePluginContext):
     context.add_step("add_todo", AddTodoStep())
     context.add_step("module", ModuleStep())
     context.add_step("file", FileStep())
+    context.add_step("prompt", PromptStep())
+
+
+class PromptStep(PixieStep):
+    def run(self, context: PixieContext, step: dict, runtime: PixieRuntime):
+        options = render_options(step, context)
+        value = runtime.ask(options)
+        output_to_context = step.get('output_to_context')
+        if output_to_context:
+            context[output_to_context] = value
 
 
 class SetStep(PixieStep):   
