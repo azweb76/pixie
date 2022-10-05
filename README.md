@@ -82,3 +82,68 @@ Options:
   -t, --target PATH    Directory to use when generating files
   -h, --help           Show this message and exit.
 ```
+
+## Pixies
+
+```yaml
+# name of the pixie
+name: pixie1
+
+# context that applies to all jobs
+context:
+  lname: Doe
+
+# one or more named jobs
+jobs:
+  # a job
+  hello:
+    # zero or more parameters
+    #   parameters can be set on the CLI by using the name of the parameter and value `-p name=Dan`
+    parameters:
+        # name of the co
+      - name: fname
+        # text to show on the prompt
+        description: First Name
+        # default value
+        default: John
+        # regular expression used to validate the input
+        validate: ^[a-zA-Z]$
+        # type of parameter: string (default), boolean, int, float, checklist, confirm
+        type: string
+        # options to pick from/select: use checklist type to select multiple
+        choices:
+          - Dan
+          - John
+    steps:
+      - print: Hello ${{ fname }} ${{ lname }}!
+```
+
+## Steps
+
+### Core
+
+#### print
+
+Print to runtime stream (stdout).
+
+```yaml
+# shortcut
+print: My message
+
+# long
+action: print
+message: My message
+```
+
+#### log
+
+Write a log entry.
+
+```yaml
+# shortcut
+log: My message
+
+# long
+action: log
+message: My message
+```
