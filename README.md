@@ -107,7 +107,7 @@ jobs:
         # default value
         default: John
         # regular expression used to validate the input
-        validate: ^[a-zA-Z]$
+        validate: ^[a-zA-Z]+$
         # type of parameter: string (default), boolean, int, float, checklist, confirm
         type: string
         # options to pick from/select: use checklist type to select multiple
@@ -118,6 +118,44 @@ jobs:
       - print: Hello ${{ fname }} ${{ lname }}!
 ```
 
+_more [examples](examples/)..._
+
 ## Steps
+
+### foreach
+
+Used to loop through a list of items.
+
+```yaml
+...
+
+jobs:
+  hello_all:
+    context:
+      names:
+        - Dan
+        - John
+
+    steps:
+      # loop through a list
+      - foreach:
+          # list of items
+          items: ${{ names }}
+          # name of item
+          item_name: name
+          # steps to execute per item
+          steps:
+            - print: Hello ${{ name }}!
+```
+
+### group
+
+Used to group a set of steps with an `if` statement.
+
+```yaml
+jobs
+...
+
+
 
 See [Plugins](docs/plugins/README.md) documentation.

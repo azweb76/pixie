@@ -1,0 +1,9 @@
+jobs:
+  hello_if:
+    parameters:
+      - name: Name
+    steps:
+      - if: ${{ Name == 'Dan' }}
+        group:
+          - print: Hello Dan! Nice to see you again.
+        

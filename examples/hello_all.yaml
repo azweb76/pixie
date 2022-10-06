@@ -1,0 +1,14 @@
+jobs:
+  hello_all:
+    context:
+      names:
+        - Dan
+        - John
+
+    steps:
+      # loop through a list
+      - foreach:
+          items: ${{ names }}
+          item_name: name
+          steps:
+            - print: Hello ${{ name }}!
