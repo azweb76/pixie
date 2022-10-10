@@ -125,13 +125,13 @@ def process_parameters(parameters, context: PixieContext, runtime: PixieRuntime)
                     utils.merge(p_override.get('overrides', {}), parameter)
                     break
 
-        parameter_options = render_options(parameter, context)
-        parameter_name = parameter_options['name']
-        context_source = parameter_options.get('context_source', parameter_name)
-        context_target = parameter_options.get('context_target', parameter_name)
+        parameter_name = parameter['name']
+        context_source = parameter.get('context_source', parameter_name)
+        context_target = parameter.get('context_target', parameter_name)
         if context_source in context:
             context[context_target] = convert(context[context_source], parameter.get('type', 'str'))
         else:
+            parameter_options = render_options(parameter, context)
             context[context_target] = read_parameter(parameter_options, context, runtime)
 
 
