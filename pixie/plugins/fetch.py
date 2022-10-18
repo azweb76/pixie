@@ -56,7 +56,7 @@ class FetchStep(PixieStep):
             p = str(p_obj)
             tfile = p[len(full_pkg_dir)+1:]
             t = os.path.join(full_target, tfile)
-            tbase, tname = os.path.split(t)
+            tbase, _ = os.path.split(t)
             if include is not None and not is_match(tfile, include):
                 continue
             if is_match(tfile, exclude):
@@ -67,6 +67,7 @@ class FetchStep(PixieStep):
             if p_obj.is_file():
                 template = get_template(tfile, templates)
                 if template:
+                    _log.debug(f'rendering template {p} to {t}')
                     if 'tokens' in template:
                         content = render_token_file(p, template['tokens'])
                     else:
