@@ -1,4 +1,4 @@
-import collections
+from collections import abc
 import importlib
 import importlib
 from importlib import util
@@ -36,7 +36,7 @@ class SetStep(PixieStep):
     def run(self, context: PixieContext, step: dict, runtime: PixieRuntime):
         context_names = step
         for context_name in context_names:
-            if isinstance(context_names[context_name], collections.Mapping):
+            if isinstance(context_names[context_name], abc.Mapping):
                 new_options = render_options(context_names[context_name], context)
                 if context_name in context:
                     merge(new_options, context[context_name])
