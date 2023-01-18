@@ -171,7 +171,8 @@ def get_utils():
         utils=RenderUtils(),
         aws=AwsUtils(),
         git=GitUtils(),
-        path=os.path
+        path=os.path,
+        tempfile=tempfile
     )
 
 
