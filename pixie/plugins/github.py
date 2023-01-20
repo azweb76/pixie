@@ -1,6 +1,7 @@
 from github import Github
 
 import os
+from pixie.rendering import render_options
 from ruamel.yaml import YAML
 
 from ..steps import PixieStep
@@ -35,7 +36,7 @@ def get_base_url(host):
 
 class GithubStep(PixieStep):
     def resolve_fn(self, obj_name, fn_name, context, step):
-        options = step.get('with', {})
+        options = render_options(step.get('with', {}), context)
         host = options.get('host', 'github.com')
         base_url = get_base_url(host)
         token = fetch_token(options, context)
