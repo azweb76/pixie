@@ -2,6 +2,7 @@ import hashlib
 from io import StringIO
 import json
 import os
+from pathlib import Path
 import re
 from tabnanny import check
 import requests
@@ -63,9 +64,10 @@ class GitUtils(object):
 class RenderUtils(object):  # pylint: disable=R0903
     """Template utilities."""
 
-    def __init__(self) -> None:
+    def __init__(self, context) -> None:
         super().__init__()
 
+        self.context = context
         self.colored = colored
 
     @classmethod
@@ -126,6 +128,15 @@ class RenderUtils(object):  # pylint: disable=R0903
         for array in arrays:
             output_array.extend(array)
         return output_array
+    
+    def dirs(cls, path):
+        return [x.name for x in Path(path).iterdir() if x.is_dir]
+
+    def files(cls, path):
+        return [x.name for x in Path(path).iterdir() if x.is_file]
+    
+    def glob(cls, path):
+        return Path(path).glob(path)
 
 
 def format_list(value, format='{value}'):
@@ -166,9 +177,9 @@ def get_parser(path):
         exit('Parser format not supported: %s' % ext)
 
 
-def get_utils():
+def get_utils(context):
     return dict(
-        utils=RenderUtils(),
+        utils=RenderUtils(context),
         aws=AwsUtils(),
         git=GitUtils(),
         path=os.path,
@@ -181,7 +192,7 @@ def render(template_name, context, template_dir):
 
     env = Environment(loader=FileSystemLoader(template_dir), variable_start_string='${{', variable_end_string='}}', keep_trailing_newline=True, undefined=ChainableUndefined)
     add_filters(env)
-    utils = get_utils()
+    utils = get_utils(context)
 
     template = env.get_template(template_name)
 
@@ -210,7 +221,7 @@ def render_value(text, context: PixieContext):
     env = NativeEnvironment(variable_start_string='${{', variable_end_string='}}', undefined=ChainableUndefined)
     add_filters(env)
 
-    utils = get_utils()
+    utils = get_utils(context)
 
     template = env.from_string(text)
 
@@ -225,7 +236,7 @@ def render_text(text, context: PixieContext):
 
     env = Environment(variable_start_string='${{', variable_end_string='}}', keep_trailing_newline=True, undefined=ChainableUndefined)
     add_filters(env)
-    utils = get_utils()
+    utils = get_utils(context)
 
     template = env.from_string(text)
 

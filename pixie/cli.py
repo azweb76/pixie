@@ -66,7 +66,7 @@ def complete_library_aliases(ctx, param, incomplete):
 
 
 @click.command("discover", help="Discover pixies in a package.")
-@click.argument('package', default='.', shell_complete=complete_library_packages)
+@click.argument('package', default='.', type=click.Path(), shell_complete=complete_library_packages)
 @click.option('-s', '--save', is_flag=True, help='Path to the pixie script.')
 def discover_cli(package, save):
     config = PixieConfig.from_user()
@@ -103,7 +103,7 @@ def list_cli():
 
 @click.command("info", help="Show information for a job.")
 @click.argument('job', shell_complete=complete_library_aliases)
-@click.option('-p', '--package', default='.', help='Pixie package name.', shell_complete=complete_library_packages)
+@click.option('-p', '--package', default='.', type=click.Path(), help='Pixie package name.', shell_complete=complete_library_packages)
 @click.option('-s', '--script', default='.pixie.yaml', type=click.Path(), help='Path to the pixie script.')
 def info_cli(job, package, script):
     config = PixieConfig.from_user()
@@ -154,7 +154,7 @@ def completion_cli(shell: str):
 
 @click.command("run", help="Used to run a pixie job.")
 @click.argument('job', shell_complete=complete_library_aliases)
-@click.option('-p', '--package', default='.', help='Package to run.', shell_complete=complete_library_packages)
+@click.option('-p', '--package', default='.', type=click.Path(), help='Package to run.', shell_complete=complete_library_packages)
 @click.option('-s', '--script', default='.pixie.yaml', type=click.Path(), help='Path to the pixie script.')
 @click.option('-c', '--context', multiple=True, help='Context values to set.')
 @click.option('--context-from', type=click.Path(), help='File used to set context')

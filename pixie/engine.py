@@ -19,33 +19,11 @@ from .context import PixieContext
 from .plugin import PixiePluginContext
 from .plugins import load_plugins
 from .rendering import render_options, render_text, render_value
-from .runtime import PixieRuntime
+from .runtime import PixieRuntime, convert
 from . import utils
 
 
 _log = logging.getLogger(__name__)
-
-
-def str2bool(v):
-    if v is None:
-        return False
-    return v.lower() in ("yes", "true", "t", "1", "y")
-
-
-known_types = {
-    'int': int,
-    'bool': str2bool,
-    'str': str,
-    'float': float,
-    'checklist': list,
-    'confirm': str2bool
-}
-
-
-def convert(v, type):
-    if type in known_types:
-        return known_types[type](v)
-    return str(v)
 
 
 def read_parameter(prompt, context, runtime: PixieRuntime):
@@ -58,7 +36,7 @@ def read_parameter(prompt, context, runtime: PixieRuntime):
     
     d = runtime.ask(prompt)
 
-    return convert(d, prompt.get('type', 'str'))
+    return d
 
 
 def config_cli(args):

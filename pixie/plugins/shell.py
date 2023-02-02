@@ -6,7 +6,7 @@ from ..context import PixieContext
 from ..steps import PixieStep
 from ..runtime import PixieRuntime
 from ..plugin import PixiePluginContext
-from ..rendering import render_text
+from ..rendering import render_options, render_text
 
 color = {
     'PURPLE': '\033[35m',
@@ -28,14 +28,15 @@ def init(context: PixiePluginContext):
 
 class ShellStep(PixieStep):
     def run(self, context: PixieContext, step: dict, runtime: PixieRuntime):
-        commands = render_text(step['command'], context)
+        options = render_options(step, context)
         term_colors = dict_to_str(color, 'TERM_%s="%s"\n')
         cmd = """
 set +x -ae
 %s
 %s
-""" % (term_colors, commands)
-        subprocess.run(cmd, cwd=context.get('__target', '.'), check=True, shell=True)
+""" % (term_colors, options['command'])
+        cwd = options.get('workdir', context.get('__target', '.'))
+        subprocess.run(cmd, cwd=cwd, check=True, shell=True)
 
 
 def dict_to_str(d, fmt='%s=%s\n'):

@@ -27,7 +27,7 @@ class PromptStep(PixieStep):
     def run(self, context: PixieContext, step: dict, runtime: PixieRuntime):
         options = render_options(step, context)
         value = runtime.ask(options)
-        output_to_context = step.get('output_to_context')
+        output_to_context = step.get('name')
         if output_to_context:
             context[output_to_context] = value
 

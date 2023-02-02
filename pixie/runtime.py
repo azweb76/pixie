@@ -1,5 +1,7 @@
 from getpass import getpass
 import re
+from giturlparse import parse
+from urllib.parse import urlparse
 
 import inquirer
 import sys
@@ -21,6 +23,39 @@ CLI_COLORS = {
     'ITALIC':  '\033[3m',
     'END':  '\033[0m',
 }
+
+
+def str2bool(v):
+    if v is None:
+        return False
+    return v.lower() in ("yes", "true", "t", "1", "y")
+
+
+def str2url(value: str):
+    return urlparse(str(value))
+
+
+def str2giturl(value: str):
+    return parse(str(value), check_domain=False)
+
+
+known_types = {
+    'int': int,
+    'bool': str2bool,
+    'str': str,
+    'float': float,
+    'checklist': list,
+    'confirm': bool,
+    'url': str2url,
+    'giturl': str2giturl,
+}
+
+
+def convert(v, type):
+    if type in known_types:
+        return known_types[type](v)
+    return str(v)
+
 
 class PixieRuntime:
     config: PixieConfig
@@ -54,13 +89,15 @@ class PixieConsoleRuntime(PixieRuntime):
         if default is None:
              validate_fn = lambda _, x: re.match(".+", x)
         description = prompt.get('description', name)
-        if prompt.get('type') == 'checklist':
+        prompt_type = prompt.get('type')
+        value = ''
+        if prompt_type == 'checklist':
             answers = inquirer.prompt([
                 inquirer.Checkbox("value", message=description, default=default, choices=prompt.get('choices', []))
             ])
             if answers is None:
                 raise KeyboardInterrupt()
-            return answers["value"]
+            value = answers["value"]
         elif 'choices' in prompt:
             choices = prompt['choices']
             answers = inquirer.prompt([
@@ -68,29 +105,31 @@ class PixieConsoleRuntime(PixieRuntime):
             ])
             if answers is None:
                 raise KeyboardInterrupt()
-            return answers["value"]
-        if prompt.get('type') == 'confirm':
+            value = answers["value"]
+        elif prompt.get('type') == 'confirm':
             answers = inquirer.prompt([
                 inquirer.Confirm("value", message=description, default=default)
             ])
             if answers is None:
                 raise KeyboardInterrupt()
-            return answers["value"]
-        if prompt.get('secure', False):
+            value = answers["value"]
+        elif prompt.get('secure', False):
             answers = inquirer.prompt([
                 inquirer.Password("value", message=description, default=default, validate=validate_fn)
             ])
             if answers is None:
                 raise KeyboardInterrupt()
-            return answers["value"]
+            value = answers["value"]
         else:
             answers = inquirer.prompt([
                 inquirer.Text("value", message=description, default=default, validate=validate_fn)
             ])
             if answers is None:
                 raise KeyboardInterrupt()
-            return answers["value"]
-    
+            value = answers["value"]
+        
+        return convert(value, prompt_type)
+
     def write(self, message: str, format=False):
         if format:
             sys.stdout.write(message.format(**CLI_COLORS))
