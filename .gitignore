@@ -5,3 +5,4 @@ dist
 xscaffold.egg-info
 .vscode
 node_modules
+.venv
