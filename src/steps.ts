@@ -118,6 +118,22 @@ export class PixieStepExecution {
         with: step.set_context,
         ...step
       };
+    } else if ('add_note' in step) {
+      return {
+        action: 'add_note',
+        with: {
+          message: step.add_note
+        },
+        ...step
+      };
+    } else if ('add_todo' in step) {
+      return {
+        action: 'add_todo',
+        with: {
+          message: step.add_todo
+        },
+        ...step
+      };
     } else if ('pixie' in step) {
       return {
         action: 'pixie',

@@ -11,4 +11,13 @@ module.exports = {
     '!src/**/*.d.ts',
   ],
   moduleFileExtensions: ['ts', 'js', 'json'],
+  transformIgnorePatterns: [
+    'node_modules/(?!(inquirer)/)'
+  ],
+  extensionsToTreatAsEsm: ['.ts'],
+  globals: {
+    'ts-jest': {
+      useESM: false
+    }
+  }
 };

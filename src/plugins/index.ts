@@ -6,32 +6,10 @@ export interface PluginModule {
 }
 
 export function loadPlugins(): PluginModule[] {
-  const pluginsPath = getPathToPlugins();
-  const modules: PluginModule[] = [];
-  
-  try {
-    if (fs.existsSync(pluginsPath)) {
-      const files = fs.readdirSync(pluginsPath);
-      
-      for (const file of files) {
-        if (file.endsWith('.js') && !file.startsWith('index.')) {
-          try {
-            const modulePath = path.join(pluginsPath, file);
-            const module = require(modulePath);
-            if (module.init && typeof module.init === 'function') {
-              modules.push(module);
-            }
-          } catch (error) {
-            console.error(`Error loading plugin ${file}:`, error);
-          }
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error loading plugins:', error);
-  }
-  
-  return modules;
+  // For now, manually load the core plugin since we're in development
+  // In a production environment, this would scan the plugins directory
+  const corePlugin = require('./core');
+  return [corePlugin];
 }
 
 export function getPathToPlugins(): string {

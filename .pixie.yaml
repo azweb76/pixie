@@ -1,0 +1,12 @@
+name: test-pixie
+
+jobs:
+  hello:
+    parameters:
+      - name: name
+        description: Your name
+        default: World
+    steps:
+      - print: Hello ${{ name }}!
+      - add_note: This is a test note
+      - add_todo: Remember to test more features
